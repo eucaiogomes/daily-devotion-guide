@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Volume2, Check, X, Sparkles, HandHeart, BookOpen } from "lucide-react";
+import { ArrowLeft, Volume2, Check, Sparkles, HandHeart, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PronunciationRecorder } from "@/components/PronunciationRecorder";
 import { useSpeech } from "@/hooks/useSpeech";
@@ -10,8 +10,8 @@ import { getPsalmByDay, type PsalmLesson } from "@/data/psalms";
 export const Route = createFileRoute("/lesson/$day")({
   head: () => ({
     meta: [
-      { title: "Salmo do dia — Lumen" },
-      { name: "description", content: "Aprenda inglês com os Salmos. Vocabulário, pronúncia e versículos memorizados." },
+      { title: "Devocional do dia — Lumen" },
+      { name: "description", content: "Um momento íntimo com Deus para aprender inglês através dos Salmos." },
     ],
   }),
   component: LessonPage,
@@ -43,7 +43,6 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     { kind: "intro", psalm },
   ];
 
-  // 1. Flashcards for the first 2 keywords
   for (const w of psalm.keywords.slice(0, 2)) {
     steps.push({
       kind: "flash",
@@ -54,13 +53,11 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     });
   }
 
-  // 2. Match all keywords (max 5)
   steps.push({
     kind: "match",
     pairs: psalm.keywords.slice(0, 5).map((k) => ({ en: capitalize(k.en), pt: capitalize(k.pt) })),
   });
 
-  // 3. Translate first verse — distractors come from other keywords
   const v1 = psalm.verses[0];
   const distractors = psalm.keywords.map((k) => capitalize(k.en)).slice(0, 3);
   steps.push({
@@ -70,7 +67,6 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     words: shuffle([...v1.en.split(/\s+/), ...distractors]),
   });
 
-  // 4. Listen exercise on the second verse (or repeat first)
   const vListen = psalm.verses[1] ?? v1;
   const listenWords = vListen.en.split(/\s+/);
   steps.push({
@@ -80,7 +76,6 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     words: shuffle([...listenWords, ...distractors.slice(0, 2)]),
   });
 
-  // 5. Fill-in-the-blank using a keyword from a verse
   const fillVerse = psalm.verses.find((v) => v.vocab && Object.keys(v.vocab).length > 0) ?? v1;
   const blankWord = Object.keys(fillVerse.vocab ?? {})[0];
   if (blankWord) {
@@ -100,18 +95,16 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     }
   }
 
-  // 6. Multiple choice — meaning of memory verse
   const mv = psalm.memoryVerse;
   steps.push({
     kind: "choice",
-    prompt: `Qual a tradução de "${mv.en}"?`,
+    prompt: `O que o teu coração entende quando ora "${mv.en}"?`,
     options: shuffle([
       { text: mv.pt, correct: true },
       ...psalm.verses.filter((v) => v.pt !== mv.pt).slice(0, 2).map((v) => ({ text: v.pt, correct: false })),
     ]),
   });
 
-  // 7. Order verses if 3+
   if (psalm.verses.length >= 3) {
     steps.push({
       kind: "order",
@@ -120,7 +113,6 @@ function buildPsalmSteps(psalm: PsalmLesson): Step[] {
     });
   }
 
-  // 8. Speak the memory verse
   steps.push({ kind: "speak", en: mv.en, pt: mv.pt });
 
   return steps;
@@ -135,82 +127,86 @@ function capitalize(s: string) {
 
 type GuidedPrayerLine = { en: string; pt: string; highlight?: string };
 
+/**
+ * Orações guiadas no tom de um adorador íntimo — coração diante de Deus.
+ * Sem linguagem corporativa ("we ask", "help us learn"). Tudo em primeira pessoa,
+ * voltado para a presença, não para a performance.
+ */
 const GUIDED_PRAYERS: GuidedPrayerLine[][] = [
   [
-    { en: "Dear God, thank You for this new day.", pt: "Querido Deus, obrigado por este novo dia.", highlight: "God" },
-    { en: "As we begin, we ask for Your presence with us.", pt: "Ao começarmos, pedimos a Tua presença conosco.", highlight: "presence" },
-    { en: "Give us wisdom to understand, strength to keep going, and hearts willing to learn and grow.", pt: "Dá-nos sabedoria para entender, força para continuar e corações dispostos a aprender e crescer.", highlight: "wisdom" },
+    { en: "Here I am, Lord. My heart is open before You.", pt: "Aqui estou, Senhor. Meu coração está aberto diante de Ti.", highlight: "heart" },
+    { en: "Quiet my mind. Let me hear Your voice in this Word.", pt: "Aquieta a minha mente. Deixa-me ouvir a Tua voz nesta Palavra.", highlight: "voice" },
+    { en: "Speak, for Your servant is listening.", pt: "Fala, que o Teu servo escuta.", highlight: "Speak" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Lord, we come before You with open hearts.", pt: "Senhor, chegamos diante de Ti com corações abertos.", highlight: "Lord" },
-    { en: "Guide our minds, calm our thoughts, and help us receive what we need today.", pt: "Guia nossas mentes, acalma nossos pensamentos e ajuda-nos a receber o que precisamos hoje.", highlight: "Guide" },
-    { en: "Let this moment be filled with peace and purpose.", pt: "Que este momento seja cheio de paz e propósito.", highlight: "peace" },
+    { en: "Lord, I come to You as I am — tired, hungry, hopeful.", pt: "Senhor, venho a Ti como estou — cansado, faminto, esperançoso.", highlight: "come" },
+    { en: "Sit with me. Teach me the language of Your praise.", pt: "Senta-Te comigo. Ensina-me a língua do Teu louvor.", highlight: "praise" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "God, thank You for the opportunity to learn and grow.", pt: "Deus, obrigado pela oportunidade de aprender e crescer.", highlight: "opportunity" },
-    { en: "Help us to be attentive, patient, and humble, so we can truly understand and use what we receive today.", pt: "Ajuda-nos a ser atentos, pacientes e humildes, para realmente entender e usar o que recebemos hoje.", highlight: "patient" },
+    { en: "Father, I lift my eyes to You this morning.", pt: "Pai, levanto os meus olhos a Ti nesta manhã.", highlight: "eyes" },
+    { en: "Tune my heart to sing Your grace, even in another tongue.", pt: "Afina meu coração para cantar a Tua graça, ainda que em outra língua.", highlight: "grace" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Dear Lord, as we start this moment, we ask for clarity and focus.", pt: "Querido Senhor, ao iniciar este momento, pedimos clareza e foco.", highlight: "clarity" },
-    { en: "Remove distractions and fill our minds with good thoughts and understanding.", pt: "Remove as distrações e enche nossas mentes com bons pensamentos e entendimento.", highlight: "understanding" },
+    { en: "Lord, I'm thirsty for You.", pt: "Senhor, tenho sede de Ti.", highlight: "thirsty" },
+    { en: "Pour Yourself into every word I read today.", pt: "Derrama-Te em cada palavra que eu ler hoje.", highlight: "Pour" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Father, we trust You with this time.", pt: "Pai, confiamos este tempo a Ti.", highlight: "Father" },
-    { en: "Give us discipline to stay focused, courage to try, and wisdom to learn even from challenges.", pt: "Dá-nos disciplina para manter o foco, coragem para tentar e sabedoria para aprender até com os desafios.", highlight: "courage" },
+    { en: "My God, hide me in Your shadow while I learn.", pt: "Meu Deus, esconde-me à Tua sombra enquanto aprendo.", highlight: "shadow" },
+    { en: "Make this time holy. Make my heart soft.", pt: "Faze deste tempo um tempo santo. Faze meu coração macio.", highlight: "holy" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "God, open our hearts and minds today.", pt: "Deus, abre nossos corações e mentes hoje.", highlight: "open" },
-    { en: "Help us not only to learn, but to grow as people, becoming wiser, calmer, and more patient.", pt: "Ajuda-nos não apenas a aprender, mas a crescer como pessoas, tornando-nos mais sábios, calmos e pacientes.", highlight: "grow" },
+    { en: "Lord, I lay down my hurry at Your feet.", pt: "Senhor, deponho aos Teus pés a minha pressa.", highlight: "feet" },
+    { en: "Slow me down. Let me taste each word like honey.", pt: "Acalma-me. Deixa-me provar cada palavra como mel.", highlight: "honey" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Lord, let this be a time of peace and learning.", pt: "Senhor, que este seja um tempo de paz e aprendizado.", highlight: "learning" },
-    { en: "Help us stay present, think clearly, and absorb everything that will help us grow.", pt: "Ajuda-nos a estar presentes, pensar com clareza e absorver tudo que nos ajudará a crescer.", highlight: "present" },
+    { en: "Father, You are my song before You are my study.", pt: "Pai, Tu és minha canção antes de seres meu estudo.", highlight: "song" },
+    { en: "Be honored in this small offering of attention.", pt: "Sê honrado nesta pequena oferta de atenção.", highlight: "offering" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Dear God, we ask for calm minds and focused hearts.", pt: "Querido Deus, pedimos mentes calmas e corações focados.", highlight: "focused" },
-    { en: "Help us to be present in this moment and give our best in everything we do.", pt: "Ajuda-nos a estar presentes neste momento e dar o nosso melhor em tudo que fazemos.", highlight: "best" },
+    { en: "Lord, I bless You with the language I have, and the one I'm learning.", pt: "Senhor, eu Te bendigo com a língua que tenho e com a que estou aprendendo.", highlight: "bless" },
+    { en: "May every new word become a stone in the altar of my praise.", pt: "Que cada nova palavra se torne uma pedra no altar do meu louvor.", highlight: "altar" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Father, guide our thoughts and give us understanding.", pt: "Pai, guia nossos pensamentos e dá-nos entendimento.", highlight: "thoughts" },
-    { en: "Help us to learn with intention and carry this knowledge with us beyond this moment.", pt: "Ajuda-nos a aprender com intenção e levar este conhecimento além deste momento.", highlight: "knowledge" },
+    { en: "My soul, bless the Lord — wherever you are, in whatever tongue.", pt: "Bendize, ó minha alma, ao Senhor — onde quer que estejas, em qualquer língua.", highlight: "soul" },
+    { en: "I want to know You more, even one word at a time.", pt: "Quero conhecer-Te mais, ainda que palavra por palavra.", highlight: "know" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Lord, fill this moment with Your peace.", pt: "Senhor, enche este momento com a Tua paz.", highlight: "peace" },
-    { en: "Remove anxiety and confusion, and replace it with clarity, wisdom, and confidence.", pt: "Remove a ansiedade e a confusão, e substitui por clareza, sabedoria e confiança.", highlight: "confidence" },
+    { en: "Lord, You are near. I can feel it.", pt: "Senhor, Tu estás perto. Eu sinto.", highlight: "near" },
+    { en: "Walk through this Psalm with me, like a friend on the road.", pt: "Caminha por este Salmo comigo, como um amigo no caminho.", highlight: "Walk" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "God, help us to be patient with ourselves and with the process of learning.", pt: "Deus, ajuda-nos a ser pacientes conosco e com o processo de aprender.", highlight: "patient" },
-    { en: "Give us strength to keep going and not give up.", pt: "Dá-nos força para continuar e não desistir.", highlight: "strength" },
+    { en: "Father, my heart wanders. Pull it back gently.", pt: "Pai, meu coração se distrai. Traze-o de volta com ternura.", highlight: "wanders" },
+    { en: "Anchor me in Your Word for these next minutes.", pt: "Ancora-me na Tua Palavra nestes próximos minutos.", highlight: "Anchor" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Dear Lord, as we begin, help us to be mindful and focused.", pt: "Querido Senhor, ao começarmos, ajuda-nos a estar atentos e focados.", highlight: "mindful" },
-    { en: "Let this be a time of growth, learning, and inner peace.", pt: "Que este seja um tempo de crescimento, aprendizado e paz interior.", highlight: "growth" },
+    { en: "Lord, You sing over me. Teach me to sing back.", pt: "Senhor, Tu cantas sobre mim. Ensina-me a cantar de volta.", highlight: "sing" },
+    { en: "I open my mouth — fill it with Your praise.", pt: "Eu abro a minha boca — enche-a do Teu louvor.", highlight: "mouth" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Father, thank You for this opportunity.", pt: "Pai, obrigado por esta oportunidade.", highlight: "opportunity" },
-    { en: "Help us to value this moment and make the most of it with attention and dedication.", pt: "Ajuda-nos a valorizar este momento e aproveitá-lo ao máximo com atenção e dedicação.", highlight: "dedication" },
+    { en: "My God, I don't come to perform. I come to be loved.", pt: "Meu Deus, não venho para desempenhar. Venho para ser amado.", highlight: "loved" },
+    { en: "Let this Psalm hold me before I try to hold it.", pt: "Deixa este Salmo me sustentar antes que eu tente sustentá-lo.", highlight: "hold" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "Lord, guide our minds and give us clarity in everything we do.", pt: "Senhor, guia nossas mentes e dá-nos clareza em tudo que fazemos.", highlight: "clarity" },
-    { en: "Help us to understand deeply and remember what is important.", pt: "Ajuda-nos a entender profundamente e lembrar o que é importante.", highlight: "remember" },
+    { en: "Lord, You are my portion. Nothing else compares.", pt: "Senhor, Tu és a minha porção. Nada se compara.", highlight: "portion" },
+    { en: "I cherish this quiet moment with You.", pt: "Eu guardo como tesouro este momento de silêncio contigo.", highlight: "cherish" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
   [
-    { en: "God, we place this moment in Your hands.", pt: "Deus, colocamos este momento em Tuas mãos.", highlight: "hands" },
-    { en: "Lead us with wisdom, fill us with peace, and help us to grow in knowledge and understanding.", pt: "Conduz-nos com sabedoria, enche-nos de paz e ajuda-nos a crescer em conhecimento e entendimento.", highlight: "wisdom" },
+    { en: "Father, write Your Word on the walls of my heart today.", pt: "Pai, escreve a Tua Palavra nas paredes do meu coração hoje.", highlight: "write" },
+    { en: "Let me carry it long after this lesson ends.", pt: "Deixa-me carregá-la muito depois deste momento terminar.", highlight: "carry" },
     { en: "Amen.", pt: "Amém.", highlight: "Amen" },
   ],
 ];
@@ -218,20 +214,6 @@ const GUIDED_PRAYERS: GuidedPrayerLine[][] = [
 function buildGuidedPrayer(psalm: PsalmLesson): GuidedPrayerLine[] {
   return GUIDED_PRAYERS[(psalm.day - 1) % GUIDED_PRAYERS.length];
 }
-
-/** Friendly labels shown in the header so users know exactly what kind of step they're on. */
-const STEP_LABELS: Record<Step["kind"], string> = {
-  prayer: "Oração",
-  intro: "Introdução",
-  flash: "Vocabulário",
-  match: "Pareamento",
-  translate: "Tradução",
-  listen: "Escuta",
-  fill: "Complete",
-  choice: "Escolha",
-  order: "Ordenar",
-  speak: "Pronúncia",
-};
 
 function LessonPage() {
   const { day } = Route.useParams();
@@ -251,52 +233,36 @@ function LessonPage() {
     return <LessonComplete day={day} psalm={psalm} />;
   }
 
-  // Progress now reflects the CURRENT step (idx+1) so the bar matches the counter.
   const stepNumber = idx + 1;
   const currentProgress = (stepNumber / total) * 100;
-  const stepLabel = STEP_LABELS[step.kind];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="sticky top-0 z-30 bg-background/90 backdrop-blur border-b border-border">
+      {/* Cabeçalho enxuto: apenas voltar + barra fina. Sem badges, sem rótulos, sem contador. */}
+      <header className="sticky top-0 z-30 bg-background/95 backdrop-blur">
         <div className="max-w-md mx-auto px-4 py-3 flex items-center gap-3">
           <Link to="/" className="p-1 -ml-1 text-muted-foreground hover:text-foreground" aria-label="Voltar para início">
-            <ArrowLeft className="size-6" />
+            <ArrowLeft className="size-5" />
           </Link>
           <div className="flex-1">
             <div
-              className="h-3 bg-muted rounded-full overflow-hidden"
+              className="h-1.5 bg-muted rounded-full overflow-hidden"
               role="progressbar"
               aria-valuenow={stepNumber}
               aria-valuemin={1}
               aria-valuemax={total}
-              aria-label={`Etapa ${stepNumber} de ${total}`}
+              aria-label={`Avanço do devocional`}
             >
               <div
-                className="h-full bg-success transition-all duration-500"
+                className="h-full bg-gradient-gold transition-all duration-700 ease-out"
                 style={{ width: `${currentProgress}%` }}
               />
             </div>
           </div>
-          <span
-            className="text-xs font-extrabold tabular-nums text-muted-foreground"
-            aria-hidden="true"
-          >
-            {stepNumber}/{total}
-          </span>
-        </div>
-        <div className="max-w-md mx-auto px-4 pb-2 flex items-center justify-between gap-2 text-xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <BookOpen className="size-3.5 shrink-0 text-primary" />
-            <span className="font-bold text-primary uppercase tracking-widest truncate">{psalm.title}</span>
-          </div>
-          <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-primary">
-            Etapa {stepNumber} • {stepLabel}
-          </span>
         </div>
       </header>
 
-      <main className="flex-1 max-w-md mx-auto w-full px-5 py-6 flex flex-col">
+      <main className="flex-1 max-w-md mx-auto w-full px-5 py-4 flex flex-col">
         <div key={idx} className="animate-pop-in flex-1">
           {step.kind === "prayer" && <PrayerStep step={step} onComplete={next} />}
           {step.kind === "intro" && <IntroStep psalm={step.psalm} />}
@@ -321,7 +287,6 @@ function LessonPage() {
 function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer" }>; onComplete: () => void }) {
   const [lineIndex, setLineIndex] = useState(0);
   const [tappedWords, setTappedWords] = useState<Set<string>>(new Set());
-  const [score, setScore] = useState<number | null>(null);
   const { speak, speaking } = useSpeech();
   const line = step.lines[lineIndex];
 
@@ -333,39 +298,39 @@ function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer"
   };
 
   const nextPrayerLine = () => {
-    setScore(null);
     setTappedWords(new Set());
     if (lineIndex + 1 >= step.lines.length) onComplete();
     else setLineIndex(lineIndex + 1);
   };
 
+  const isLast = lineIndex + 1 >= step.lines.length;
+
   return (
     <div className="pt-2 text-center">
-      <div className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-gradient-gold shadow-chunky-gold">
-        <HandHeart className="size-10 text-primary-foreground" />
+      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-gold/90 shadow-soft">
+        <HandHeart className="size-8 text-primary-foreground" />
       </div>
-      <p className="mt-4 text-xs font-bold uppercase tracking-widest text-muted-foreground">
-        Oração guiada • Dia {step.psalm.day}
+      <p className="mt-5 font-display text-2xl font-bold leading-tight">
+        Respira fundo.
       </p>
-      <h1 className="mt-1 font-display text-3xl font-bold">Antes de começar</h1>
-      <p className="mt-2 text-sm font-semibold text-muted-foreground">
-        Linha {lineIndex + 1} de {step.lines.length} • ouça, toque nas palavras e repita.
+      <p className="mt-1 text-sm text-muted-foreground">
+        Antes da Palavra, o coração.
       </p>
 
-      <div className="mt-6 rounded-3xl border-2 border-border bg-card p-5 text-left shadow-soft">
-        <div className="mb-4 flex items-center gap-2">
+      <div className="mt-8 rounded-3xl border border-border/60 bg-card p-6 text-left shadow-soft">
+        <div className="mb-4 flex items-center justify-between">
           <button
             onClick={() => speak(line.en)}
-            aria-label="Ouvir oração"
-            className={`flex size-11 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 ${speaking ? "animate-pulse" : ""}`}
+            aria-label="Ouvir esta linha"
+            className={`flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 ${speaking ? "animate-pulse" : ""}`}
           >
             <Volume2 className="size-5" />
           </button>
           <button
             onClick={() => speak(line.en, { rate: 0.6 })}
-            className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary"
+            className="text-xs font-semibold text-muted-foreground hover:text-primary"
           >
-            🐢 Devagar
+            🐢 mais devagar
           </button>
         </div>
         <p className="font-display text-2xl leading-snug">
@@ -387,15 +352,25 @@ function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer"
         <p className="mt-3 text-sm italic text-muted-foreground">{line.pt}</p>
       </div>
 
-      <div className="mt-6">
-        <p className="mb-3 text-sm text-muted-foreground">
-          {score !== null ? `Pronúncia: ${Math.round(score * 100)}%` : "Toque no microfone e repita a oração"}
-        </p>
-        <PronunciationRecorder expected={line.en} pt={line.pt} threshold={0.6} size="md" onResult={(result) => setScore(result.accuracy)} />
+      <p className="mt-6 text-xs text-muted-foreground">
+        Toque em cada palavra para ouvir. Repita em voz alta, sem pressa.
+      </p>
+
+      <div className="mt-4">
+        <PronunciationRecorder
+          expected={line.en}
+          pt={line.pt}
+          threshold={0.6}
+          size="md"
+          onResult={() => { /* livre — não pontua a oração */ }}
+        />
       </div>
 
-      <button onClick={nextPrayerLine} className="mt-6 w-full rounded-2xl bg-primary py-4 font-bold uppercase tracking-wide text-primary-foreground shadow-chunky active:translate-y-1 active:shadow-none">
-        {lineIndex + 1 >= step.lines.length ? "Amém • Ir para aula" : "Próxima linha"}
+      <button
+        onClick={nextPrayerLine}
+        className="mt-8 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground shadow-chunky active:translate-y-1 active:shadow-none"
+      >
+        {isLast ? "Amém — abrir a Palavra" : "Continuar a oração"}
       </button>
     </div>
   );
@@ -406,15 +381,16 @@ function IntroStep({ psalm }: { psalm: PsalmLesson }) {
   const v1 = psalm.verses[0];
   return (
     <div className="text-center pt-2">
-      <div className="mx-auto size-20 rounded-3xl bg-gradient-hero flex items-center justify-center shadow-chunky text-4xl">
+      <div className="mx-auto size-16 rounded-full bg-gradient-hero flex items-center justify-center shadow-soft text-3xl">
         {psalm.emoji}
       </div>
-      <p className="mt-4 text-xs uppercase tracking-widest font-bold text-muted-foreground">
-        {psalm.subtitle}
+      <p className="mt-4 text-xs uppercase tracking-widest font-semibold text-muted-foreground">
+        Salmo de hoje
       </p>
       <h1 className="font-display text-3xl font-bold mt-1">{psalm.title}</h1>
+      <p className="mt-1 text-sm text-muted-foreground italic">{psalm.subtitle}</p>
 
-      <div className="mt-6 rounded-3xl bg-card border-2 border-border p-5 text-left shadow-soft">
+      <div className="mt-6 rounded-3xl bg-card border border-border/60 p-6 text-left shadow-soft">
         <button
           onClick={() => speak(v1.en)}
           className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mb-3"
@@ -422,23 +398,23 @@ function IntroStep({ psalm }: { psalm: PsalmLesson }) {
         >
           <Volume2 className="size-5" />
         </button>
-        <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">
+        <p className="text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
           {v1.ref}
         </p>
         <p className="font-display text-xl mt-1 leading-snug">"{v1.en}"</p>
         <p className="text-sm text-muted-foreground mt-2 italic">{v1.pt}</p>
       </div>
 
-      <div className="mt-5">
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
-          Você vai aprender
+      <div className="mt-6">
+        <p className="text-xs text-muted-foreground mb-3">
+          Palavras que vais guardar hoje
         </p>
         <div className="flex flex-wrap gap-2 justify-center">
           {psalm.keywords.slice(0, 5).map((k) => (
             <button
               key={k.en}
               onClick={() => speak(k.en)}
-              className="px-3 py-1.5 rounded-full bg-gold/20 text-foreground text-xs font-bold inline-flex items-center gap-1"
+              className="px-3 py-1.5 rounded-full bg-gold/15 text-foreground text-xs font-semibold inline-flex items-center gap-1.5 active:scale-95"
             >
               <Volume2 className="size-3" /> {k.en}
             </button>
@@ -451,15 +427,16 @@ function IntroStep({ psalm }: { psalm: PsalmLesson }) {
 
 function FlashCard({ step }: { step: Extract<Step, { kind: "flash" }> }) {
   const { speak, speaking } = useSpeech();
-  // Auto-play the new word once when the card appears.
   useEffect(() => {
     speak(step.en);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step.en]);
   return (
     <div className="text-center pt-4">
-      <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">Nova palavra</p>
-      <div className="mt-6 rounded-3xl bg-gradient-hero text-primary-foreground p-8 shadow-soft">
+      <p className="text-xs text-muted-foreground">
+        Uma palavra de cada vez.
+      </p>
+      <div className="mt-5 rounded-3xl bg-gradient-hero text-primary-foreground p-8 shadow-soft">
         <button
           onClick={() => speak(step.en)}
           aria-label="Ouvir palavra"
@@ -477,6 +454,9 @@ function FlashCard({ step }: { step: Extract<Step, { kind: "flash" }> }) {
       >
         <Volume2 className="size-4" /> "{step.example}"
       </button>
+      <p className="mt-4 text-xs text-muted-foreground">
+        Repete baixinho, como quem saboreia.
+      </p>
     </div>
   );
 }
@@ -497,10 +477,10 @@ function TranslateExercise({ step, feedback, setFeedback }: { step: Extract<Step
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Traduza esta frase</h2>
-      <p className="mt-2 text-base text-muted-foreground">"{step.pt}"</p>
+      <h2 className="font-display text-2xl font-bold">Diga em inglês, com o coração</h2>
+      <p className="mt-2 text-base text-muted-foreground italic">"{step.pt}"</p>
 
-      <div className="mt-6 min-h-24 border-b-2 border-border pb-3 flex flex-wrap gap-2">
+      <div className="mt-6 min-h-24 border-b-2 border-dashed border-border pb-3 flex flex-wrap gap-2">
         {picked.map((w, i) => (
           <button
             key={i}
@@ -530,9 +510,9 @@ function TranslateExercise({ step, feedback, setFeedback }: { step: Extract<Step
       {picked.length === correctOrder.length && feedback === "idle" && (
         <button
           onClick={check}
-          className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold uppercase tracking-wide shadow-chunky-success active:translate-y-1 active:shadow-none"
+          className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold shadow-chunky-success active:translate-y-1 active:shadow-none"
         >
-          Verificar
+          Conferir
         </button>
       )}
     </div>
@@ -549,8 +529,8 @@ function ChoiceExercise({ step, feedback, setFeedback }: { step: Extract<Step, {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Escolha a tradução correta</h2>
-      <p className="mt-2 text-muted-foreground">{step.prompt}</p>
+      <h2 className="font-display text-2xl font-bold">O que esta oração diz?</h2>
+      <p className="mt-2 text-muted-foreground italic">{step.prompt}</p>
       <div className="mt-6 space-y-3">
         {step.options.map((opt, i) => {
           const isSel = selected === i;
@@ -584,7 +564,8 @@ function FillExercise({ step, feedback, setFeedback }: { step: Extract<Step, { k
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Complete o versículo</h2>
+      <h2 className="font-display text-2xl font-bold">Que palavra falta no Salmo?</h2>
+      <p className="mt-2 text-sm text-muted-foreground">Escuta o coração — ela já está aí.</p>
       <div className="mt-8 text-2xl font-display flex flex-wrap items-center justify-center gap-2 text-center">
         {step.sentence.map((w, i) =>
           i === step.blank ? (
@@ -620,7 +601,6 @@ function ListenExercise({ step, feedback, setFeedback }: { step: Extract<Step, {
 
   const check = () => setFeedback(picked.join(" ") === step.expected ? "right" : "wrong");
 
-  // Play once on mount so the user immediately hears the sentence.
   useEffect(() => {
     if (supported) speak(step.en);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -628,24 +608,25 @@ function ListenExercise({ step, feedback, setFeedback }: { step: Extract<Step, {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Ouça e escreva</h2>
+      <h2 className="font-display text-2xl font-bold">Escuta a Palavra</h2>
+      <p className="mt-2 text-sm text-muted-foreground">Fecha os olhos se quiser. Depois monte o que ouviste.</p>
       <div className="mt-6 flex flex-col items-center gap-2">
         <button
           onClick={() => speak(step.en)}
           disabled={!supported}
           className={`flex items-center gap-3 px-6 py-4 rounded-2xl bg-gradient-hero text-primary-foreground font-bold shadow-chunky active:translate-y-1 active:shadow-none disabled:opacity-50 ${speaking ? "animate-pulse" : ""}`}
         >
-          <Volume2 className="size-6" /> {speaking ? "Tocando..." : "Tocar áudio"}
+          <Volume2 className="size-6" /> {speaking ? "Tocando..." : "Ouvir de novo"}
         </button>
         <button
           onClick={() => speak(step.en, { rate: 0.6 })}
           disabled={!supported}
-          className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary"
+          className="text-xs font-semibold text-muted-foreground hover:text-primary"
         >
-          🐢 Mais devagar
+          🐢 mais devagar
         </button>
       </div>
-      <div className="mt-8 min-h-20 border-b-2 border-border pb-3 flex flex-wrap gap-2">
+      <div className="mt-8 min-h-20 border-b-2 border-dashed border-border pb-3 flex flex-wrap gap-2">
         {picked.map((w, i) => (
           <button key={i} onClick={() => setPicked(picked.filter((_, j) => j !== i))} className="px-3 py-2 rounded-xl bg-card border-2 border-border shadow-chunky-locked font-bold">
             {w}
@@ -660,15 +641,13 @@ function ListenExercise({ step, feedback, setFeedback }: { step: Extract<Step, {
         ))}
       </div>
       {picked.length === expected.length && feedback === "idle" && (
-        <button onClick={check} className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold uppercase tracking-wide shadow-chunky-success active:translate-y-1 active:shadow-none">
-          Verificar
+        <button onClick={check} className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold shadow-chunky-success active:translate-y-1 active:shadow-none">
+          Conferir
         </button>
       )}
     </div>
   );
 }
-
-/* ---------- New game types ---------- */
 
 function MatchExercise({ step, feedback, setFeedback }: { step: Extract<Step, { kind: "match" }>; feedback: string; setFeedback: (f: "idle" | "right" | "wrong") => void }) {
   const ens = useMemo(() => [...step.pairs].sort(() => 0.5 - Math.random()).map(p => p.en), [step]);
@@ -694,12 +673,14 @@ function MatchExercise({ step, feedback, setFeedback }: { step: Extract<Step, { 
         }, 600);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selEn, selPt]);
 
   useEffect(() => {
     if (matched.size === step.pairs.length && feedback === "idle") {
       setFeedback("right");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matched]);
 
   const cellCls = (active: boolean, isMatched: boolean, isWrong: boolean) => {
@@ -711,8 +692,8 @@ function MatchExercise({ step, feedback, setFeedback }: { step: Extract<Step, { 
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Conecte os pares</h2>
-      <p className="mt-2 text-muted-foreground">Toque uma palavra em inglês e depois sua tradução.</p>
+      <h2 className="font-display text-2xl font-bold">Conhecer pelo nome</h2>
+      <p className="mt-2 text-sm text-muted-foreground">Cada palavra inglesa tem um irmão em português. Encontra-os.</p>
 
       <div className="mt-6 grid grid-cols-2 gap-3">
         <div className="space-y-3">
@@ -774,8 +755,8 @@ function OrderPsalmExercise({ step, feedback, setFeedback }: { step: Extract<Ste
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-bold">Ordene o salmo</h2>
-      <p className="mt-2 text-muted-foreground">{step.reference}</p>
+      <h2 className="font-display text-2xl font-bold">Recompor o Salmo</h2>
+      <p className="mt-2 text-sm text-muted-foreground">{step.reference}</p>
 
       <div className="mt-6 space-y-2">
         {order.map((line, i) => (
@@ -808,9 +789,9 @@ function OrderPsalmExercise({ step, feedback, setFeedback }: { step: Extract<Ste
       {feedback === "idle" && (
         <button
           onClick={check}
-          className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold uppercase tracking-wide shadow-chunky-success active:translate-y-1 active:shadow-none"
+          className="mt-6 w-full py-3 rounded-2xl bg-success text-success-foreground font-bold shadow-chunky-success active:translate-y-1 active:shadow-none"
         >
-          Verificar ordem
+          Conferir
         </button>
       )}
     </div>
@@ -821,11 +802,18 @@ function SpeakExercise({ step, feedback, setFeedback }: { step: Extract<Step, { 
   void feedback;
   return (
     <div className="text-center">
-      <div className="mx-auto size-14 rounded-2xl bg-gradient-gold flex items-center justify-center shadow-chunky-gold">
+      <div className="mx-auto size-14 rounded-full bg-gradient-gold flex items-center justify-center shadow-soft">
         <HandHeart className="size-7 text-white" />
       </div>
-      <h2 className="font-display text-2xl font-bold mt-4">Repita em oração</h2>
-      <p className="text-sm text-muted-foreground mt-1">Fale com fé — em voz alta.</p>
+      <h2 className="font-display text-2xl font-bold mt-4">Devolva ao Senhor</h2>
+      <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">
+        O Salmo vira oração na sua boca. Diga em voz alta, sem medo de errar.
+      </p>
+
+      <div className="mt-4 rounded-2xl bg-card border border-border/60 p-4 text-left shadow-soft">
+        <p className="font-display text-lg leading-snug">"{step.en}"</p>
+        <p className="text-xs text-muted-foreground mt-1 italic">{step.pt}</p>
+      </div>
 
       <div className="mt-6">
         <PronunciationRecorder
@@ -846,27 +834,44 @@ function FooterAction({ step, feedback, onContinue, setFeedback }: { step: Step;
   if (step.kind === "flash" || step.kind === "intro") {
     return (
       <div className="mt-6">
-        <button onClick={onContinue} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold uppercase tracking-wide shadow-chunky active:translate-y-1 active:shadow-none">
-          {step.kind === "intro" ? "Começar lição" : "Continuar"}
+        <button onClick={onContinue} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold shadow-chunky active:translate-y-1 active:shadow-none">
+          {step.kind === "intro" ? "Entrar no Salmo" : "Seguir adiante"}
         </button>
       </div>
     );
   }
   if (feedback === "idle") return <div className="h-20" />;
   const right = feedback === "right";
+
+  // Mensagens calorosas, de irmão na fé. Nada de "errado" ou "wrong".
+  const rightMsgs = [
+    "É isso. Sente como ressoa.",
+    "O coração lembra. Continua.",
+    "Bem dito — em outra língua, a mesma fé.",
+    "Aleluia. Segue.",
+  ];
+  const softMsgs = [
+    "Quase. Respira e olha de novo.",
+    "Sem pressa — a Palavra espera.",
+    "Tudo bem. Aprender é caminhar.",
+  ];
+  const msg = right
+    ? rightMsgs[Math.floor(Math.random() * rightMsgs.length)]
+    : softMsgs[Math.floor(Math.random() * softMsgs.length)];
+
   return (
-    <div className={`-mx-5 mt-6 px-5 pt-4 pb-5 rounded-t-3xl ${right ? "bg-success/15" : "bg-destructive/15"}`}>
+    <div className={`-mx-5 mt-6 px-5 pt-4 pb-5 rounded-t-3xl ${right ? "bg-success/10" : "bg-muted"}`}>
       <div className="flex items-center gap-2">
-        <div className={`size-9 rounded-full flex items-center justify-center ${right ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}>
-          {right ? <Check className="size-5" /> : <X className="size-5" />}
+        <div className={`size-9 rounded-full flex items-center justify-center ${right ? "bg-success text-success-foreground" : "bg-card text-foreground border border-border"}`}>
+          {right ? <Check className="size-5" /> : <Heart className="size-5 text-primary" />}
         </div>
-        <p className={`font-bold ${right ? "text-success" : "text-destructive"}`}>
-          {right ? "Aleluia! Resposta certa." : "Quase! Tente lembrar."}
+        <p className={`font-semibold ${right ? "text-success" : "text-foreground"}`}>
+          {msg}
         </p>
       </div>
       <button
         onClick={() => { setFeedback("idle"); onContinue(); }}
-        className={`mt-3 w-full py-3 rounded-2xl font-bold uppercase tracking-wide shadow-chunky-success active:translate-y-1 active:shadow-none ${right ? "bg-success text-success-foreground" : "bg-destructive text-destructive-foreground"}`}
+        className={`mt-3 w-full py-3 rounded-2xl font-bold shadow-chunky-success active:translate-y-1 active:shadow-none ${right ? "bg-success text-success-foreground" : "bg-primary text-primary-foreground"}`}
       >
         Continuar
       </button>
@@ -880,46 +885,38 @@ function LessonComplete({ day, psalm }: { day: string; psalm: PsalmLesson }) {
   return (
     <div className="min-h-screen bg-gradient-sky flex items-center justify-center px-6">
       <div className="text-center max-w-sm animate-pop-in">
-        <div className="mx-auto size-24 rounded-full bg-gradient-gold flex items-center justify-center shadow-chunky-gold">
-          <Sparkles className="size-12 text-white" />
+        <div className="mx-auto size-20 rounded-full bg-gradient-gold flex items-center justify-center shadow-soft">
+          <Sparkles className="size-10 text-white" />
         </div>
-        <h1 className="font-display text-4xl font-bold mt-6">Glória a Deus!</h1>
-        <p className="text-muted-foreground mt-2">
-          Você completou o {psalm.title} (dia {day}) 🎉
+        <h1 className="font-display text-3xl font-bold mt-6 leading-tight">
+          A Palavra ficou em ti.
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm">
+          Dia {day} • {psalm.title}
         </p>
 
-        <div className="mt-6 rounded-3xl bg-card border-2 border-border p-5 text-left shadow-soft">
-          <p className="text-[10px] uppercase tracking-widest font-bold text-primary">
-            Versículo memorizado • {mv.ref}
+        <div className="mt-6 rounded-3xl bg-card border border-border/60 p-5 text-left shadow-soft">
+          <p className="text-[10px] uppercase tracking-widest font-semibold text-primary">
+            Guarda no coração • {mv.ref}
           </p>
           <p className="font-display text-lg mt-2 leading-snug">"{mv.en}"</p>
           <p className="text-xs text-muted-foreground mt-1 italic">{mv.pt}</p>
           <button
             onClick={() => speak(mv.en)}
-            className="mt-3 inline-flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-primary"
+            className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-primary"
           >
-            <Volume2 className="size-4" /> Ouvir novamente
+            <Volume2 className="size-4" /> Ouvir mais uma vez
           </button>
         </div>
 
-        <div className="mt-6 grid grid-cols-3 gap-3">
-          <Stat label="XP" value="+15" color="bg-primary text-primary-foreground" />
-          <Stat label="Streak" value="🔥 +1" color="bg-gradient-flame text-white" />
-          <Stat label="Coroas" value="+1" color="bg-gradient-gold text-white" />
-        </div>
-        <Link to="/" className="mt-8 inline-block w-full py-4 rounded-2xl bg-success text-success-foreground font-bold uppercase tracking-wide shadow-chunky-success active:translate-y-1 active:shadow-none">
+        <p className="mt-6 text-sm text-muted-foreground italic px-2">
+          Leva esta palavra contigo pelo dia. Repete-a baixinho.
+        </p>
+
+        <Link to="/" className="mt-6 inline-block w-full py-4 rounded-2xl bg-primary text-primary-foreground font-bold shadow-chunky active:translate-y-1 active:shadow-none">
           Voltar à jornada
         </Link>
       </div>
-    </div>
-  );
-}
-
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
-  return (
-    <div className={`rounded-2xl p-3 ${color}`}>
-      <p className="text-xs opacity-90 font-bold uppercase tracking-wide">{label}</p>
-      <p className="font-display text-xl font-bold mt-1">{value}</p>
     </div>
   );
 }
