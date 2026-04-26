@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Volume2, Check, Sparkles, HandHeart, Heart } from "lucide-react";
+import { ArrowLeft, Volume2, Check, Sparkles, HandHeart, Heart, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PronunciationRecorder } from "@/components/PronunciationRecorder";
 import { useSpeech } from "@/hooks/useSpeech";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { getPsalmByDay, type PsalmLesson } from "@/data/psalms";
 
 export const Route = createFileRoute("/lesson/$day")({
@@ -284,11 +285,112 @@ function LessonPage() {
 
 /* ---------- Exercises ---------- */
 
+/**
+ * Oração guiada em formato de conversa de chat.
+ * Cada linha do Senhor aparece como mensagem recebida (esquerda) com botão
+ * de tocar áudio. O aluno responde gravando — sua resposta aparece como
+ * mensagem enviada (direita, estilo áudio do WhatsApp). Aí libera a próxima.
+ */
 function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer" }>; onComplete: () => void }) {
-  const [lineIndex, setLineIndex] = useState(0);
-  const [tappedWords, setTappedWords] = useState<Set<string>>(new Set());
+  // Quantas mensagens "do Senhor" já foram reveladas (1..N)
+  const [revealed, setRevealed] = useState(1);
+  // Para cada linha já respondida pelo aluno, guarda a transcrição
+  const [responses, setResponses] = useState<Record<number, string>>({});
+  const total = step.lines.length;
+  const allDone = revealed > total;
+
+  const handleResponse = (idx: number, transcript: string) => {
+    setResponses((prev) => ({ ...prev, [idx]: transcript }));
+    // Pequena pausa antes de revelar a próxima — sensação de conversa real
+    setTimeout(() => {
+      setRevealed((r) => Math.max(r, idx + 2));
+    }, 600);
+  };
+
+  const skipResponse = (idx: number) => {
+    setResponses((prev) => ({ ...prev, [idx]: "" }));
+    setRevealed((r) => Math.max(r, idx + 2));
+  };
+
+  return (
+    <div className="-mx-5 -mt-4 flex min-h-[calc(100vh-7rem)] flex-col bg-[hsl(var(--prayer-chat-bg,_var(--muted)))]">
+      {/* Cabeçalho do chat — estilo WhatsApp */}
+      <div className="sticky top-0 z-10 flex items-center gap-3 border-b border-border/60 bg-card px-4 py-3 shadow-sm">
+        <div className="flex size-10 items-center justify-center rounded-full bg-gradient-gold shadow-soft">
+          <HandHeart className="size-5 text-primary-foreground" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-display text-base font-bold leading-tight">Antes da Palavra</p>
+          <p className="text-[11px] text-muted-foreground">
+            {allDone ? "oração concluída" : "ouvindo seu coração…"}
+          </p>
+        </div>
+        <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
+          {Math.min(revealed, total)}/{total}
+        </span>
+      </div>
+
+      {/* Conversa */}
+      <div className="flex-1 space-y-3 px-4 py-5">
+        <div className="text-center">
+          <span className="inline-block rounded-full bg-card/80 px-3 py-1 text-[10px] font-semibold text-muted-foreground shadow-sm">
+            Hoje • respira fundo
+          </span>
+        </div>
+
+        {step.lines.slice(0, revealed).map((line, idx) => (
+          <PrayerChatTurn
+            key={idx}
+            line={line}
+            responded={idx in responses}
+            onRespond={(t) => handleResponse(idx, t)}
+            onSkip={() => skipResponse(idx)}
+          />
+        ))}
+
+        {allDone && (
+          <div className="pt-2 text-center">
+            <p className="font-display text-lg font-bold">Amém. 🕊️</p>
+            <p className="mt-1 text-xs text-muted-foreground">A Palavra te espera.</p>
+            <button
+              onClick={onComplete}
+              className="mt-4 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground shadow-chunky active:translate-y-1 active:shadow-none"
+            >
+              Abrir o Salmo
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Uma "rodada" do chat: bolha do Senhor à esquerda + resposta do aluno à direita. */
+function PrayerChatTurn({
+  line,
+  responded,
+  onRespond,
+  onSkip,
+}: {
+  line: GuidedPrayerLine;
+  responded: boolean;
+  onRespond: (transcript: string) => void;
+  onSkip: () => void;
+}) {
   const { speak, speaking } = useSpeech();
-  const line = step.lines[lineIndex];
+  const [tappedWords, setTappedWords] = useState<Set<string>>(new Set());
+  const [autoPlayed, setAutoPlayed] = useState(false);
+
+  // Toca a frase automaticamente quando a bolha entra na conversa
+  useEffect(() => {
+    if (autoPlayed) return;
+    const t = setTimeout(() => {
+      speak(line.en);
+      setAutoPlayed(true);
+    }, 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const tapWord = (word: string) => {
     const cleaned = word.replace(/[^a-zA-Z']/g, "").toLowerCase();
@@ -297,81 +399,160 @@ function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer"
     speak(word.replace(/[^a-zA-Z']/g, ""));
   };
 
-  const nextPrayerLine = () => {
-    setTappedWords(new Set());
-    if (lineIndex + 1 >= step.lines.length) onComplete();
-    else setLineIndex(lineIndex + 1);
-  };
+  return (
+    <div className="space-y-2 animate-pop-in">
+      {/* Mensagem recebida — alinhada à esquerda */}
+      <div className="flex items-end gap-2">
+        <div className="flex size-7 shrink-0 items-center justify-center rounded-full bg-gradient-gold/80">
+          <HandHeart className="size-3.5 text-primary-foreground" />
+        </div>
+        <div className="max-w-[85%] rounded-2xl rounded-bl-md bg-card border border-border/60 px-3 pt-2 pb-3 shadow-sm">
+          {/* Mini player no topo da bolha — estilo áudio WhatsApp */}
+          <div className="flex items-center gap-2 pb-2 border-b border-border/40">
+            <button
+              onClick={() => speak(line.en)}
+              aria-label="Ouvir mensagem"
+              className={`flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground active:scale-95 ${speaking ? "animate-pulse" : ""}`}
+            >
+              <Volume2 className="size-4" />
+            </button>
+            <div className="flex-1 flex items-center gap-0.5 h-5">
+              {/* "Onda" decorativa do áudio */}
+              {Array.from({ length: 22 }).map((_, i) => (
+                <span
+                  key={i}
+                  className="w-0.5 rounded-full bg-primary/40"
+                  style={{ height: `${20 + Math.sin(i * 1.3) * 60}%` }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => speak(line.en, { rate: 0.6 })}
+              className="text-[10px] font-semibold text-muted-foreground hover:text-primary"
+              aria-label="Mais devagar"
+            >
+              0.6×
+            </button>
+          </div>
 
-  const isLast = lineIndex + 1 >= step.lines.length;
+          {/* Texto em inglês — palavras tocáveis */}
+          <p className="mt-2 font-display text-base leading-snug">
+            {line.en.split(" ").map((word, index) => {
+              const cleaned = word.replace(/[^a-zA-Z']/g, "").toLowerCase();
+              const isTapped = tappedWords.has(cleaned);
+              const isHighlight = line.highlight && cleaned === line.highlight.toLowerCase();
+              return (
+                <button
+                  key={`${word}-${index}`}
+                  onClick={() => tapWord(word)}
+                  className={`mb-0.5 mr-0.5 inline-block rounded px-0.5 transition ${isHighlight ? "bg-gold/30 font-bold text-foreground" : "hover:bg-primary/10"} ${isTapped ? "text-primary underline decoration-2 underline-offset-4" : ""}`}
+                >
+                  {word}
+                </button>
+              );
+            })}
+          </p>
+          <p className="mt-1.5 text-xs italic text-muted-foreground">{line.pt}</p>
+          <p className="mt-1 text-right text-[10px] text-muted-foreground">
+            {speaking ? "tocando…" : "toque para ouvir"}
+          </p>
+        </div>
+      </div>
+
+      {/* Resposta do aluno */}
+      {!responded ? (
+        <div className="flex justify-end">
+          <div className="max-w-[85%] rounded-2xl rounded-br-md bg-primary/10 border border-primary/30 px-3 py-3 shadow-sm">
+            <p className="text-[11px] font-semibold text-primary mb-2 text-right">
+              Sua vez — repita em voz alta
+            </p>
+            <PrayerInlineRecorder
+              expected={line.en}
+              onResult={(t) => onRespond(t)}
+            />
+            <button
+              onClick={onSkip}
+              className="mt-2 w-full text-[10px] font-semibold text-muted-foreground hover:text-foreground"
+            >
+              pular esta linha
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex justify-end animate-pop-in">
+          <div className="max-w-[85%] rounded-2xl rounded-br-md bg-success/15 border border-success/30 px-3 py-2 shadow-sm">
+            <div className="flex items-center gap-2">
+              <Check className="size-4 text-success shrink-0" />
+              <div className="flex-1 flex items-center gap-0.5 h-4">
+                {Array.from({ length: 18 }).map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-0.5 rounded-full bg-success/60"
+                    style={{ height: `${25 + Math.cos(i * 1.1) * 55}%` }}
+                  />
+                ))}
+              </div>
+              <span className="text-[10px] font-semibold text-success">amém</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Microfone compacto para usar dentro da bolha de chat. */
+function PrayerInlineRecorder({
+  expected,
+  onResult,
+}: {
+  expected: string;
+  onResult: (transcript: string) => void;
+}) {
+  const { supported, listening, transcript, interim, error, start, stop } =
+    useSpeechRecognition("en-US");
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (!listening && transcript && !done) {
+      setDone(true);
+      onResult(transcript);
+    }
+  }, [listening, transcript, done, onResult]);
+
+  if (!supported) {
+    return (
+      <button
+        onClick={() => onResult("")}
+        className="w-full rounded-xl bg-primary py-2.5 text-xs font-bold text-primary-foreground"
+      >
+        Já orei — continuar
+      </button>
+    );
+  }
 
   return (
-    <div className="pt-2 text-center">
-      <div className="mx-auto flex size-16 items-center justify-center rounded-full bg-gradient-gold/90 shadow-soft">
-        <HandHeart className="size-8 text-primary-foreground" />
-      </div>
-      <p className="mt-5 font-display text-2xl font-bold leading-tight">
-        Respira fundo.
-      </p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Antes da Palavra, o coração.
-      </p>
-
-      <div className="mt-8 rounded-3xl border border-border/60 bg-card p-6 text-left shadow-soft">
-        <div className="mb-4 flex items-center justify-between">
-          <button
-            onClick={() => speak(line.en)}
-            aria-label="Ouvir esta linha"
-            className={`flex size-10 items-center justify-center rounded-full bg-primary/10 text-primary active:scale-95 ${speaking ? "animate-pulse" : ""}`}
-          >
-            <Volume2 className="size-5" />
-          </button>
-          <button
-            onClick={() => speak(line.en, { rate: 0.6 })}
-            className="text-xs font-semibold text-muted-foreground hover:text-primary"
-          >
-            🐢 mais devagar
-          </button>
-        </div>
-        <p className="font-display text-2xl leading-snug">
-          {line.en.split(" ").map((word, index) => {
-            const cleaned = word.replace(/[^a-zA-Z']/g, "").toLowerCase();
-            const isTapped = tappedWords.has(cleaned);
-            const isHighlight = line.highlight && cleaned === line.highlight.toLowerCase();
-            return (
-              <button
-                key={`${word}-${index}`}
-                onClick={() => tapWord(word)}
-                className={`mb-1 mr-1 inline-block rounded px-1 transition ${isHighlight ? "bg-gold/30 font-bold text-foreground" : "hover:bg-primary/10"} ${isTapped ? "text-primary underline decoration-2 underline-offset-4" : ""}`}
-              >
-                {word}
-              </button>
-            );
-          })}
-        </p>
-        <p className="mt-3 text-sm italic text-muted-foreground">{line.pt}</p>
-      </div>
-
-      <p className="mt-6 text-xs text-muted-foreground">
-        Toque em cada palavra para ouvir. Repita em voz alta, sem pressa.
-      </p>
-
-      <div className="mt-4">
-        <PronunciationRecorder
-          expected={line.en}
-          pt={line.pt}
-          threshold={0.6}
-          size="md"
-          onResult={() => { /* livre — não pontua a oração */ }}
-        />
-      </div>
-
+    <div>
       <button
-        onClick={nextPrayerLine}
-        className="mt-8 w-full rounded-2xl bg-primary py-4 font-bold text-primary-foreground shadow-chunky active:translate-y-1 active:shadow-none"
+        onClick={listening ? stop : start}
+        className={`w-full flex items-center justify-center gap-2 rounded-xl py-2.5 font-bold text-sm shadow-sm active:translate-y-0.5 ${listening ? "bg-destructive text-white animate-pulse" : "bg-primary text-primary-foreground"}`}
+        aria-label={listening ? "Parar gravação" : "Gravar oração"}
       >
-        {isLast ? "Amém — abrir a Palavra" : "Continuar a oração"}
+        <Mic className="size-4" />
+        {listening ? "ouvindo… toque para enviar" : "gravar áudio"}
       </button>
+      {(listening || interim) && (
+        <p className="mt-1.5 text-[10px] italic text-muted-foreground text-right">
+          {interim || "ouvindo…"}
+        </p>
+      )}
+      {error && error !== "no-speech" && (
+        <p className="mt-1 text-[10px] text-destructive text-right">
+          {error === "not-allowed" ? "permita o microfone" : "tente de novo"}
+        </p>
+      )}
+      {/* Voluntariamente sem expected na UI — usado só para alinhar com o resto do app */}
+      <span className="sr-only">{expected}</span>
     </div>
   );
 }
