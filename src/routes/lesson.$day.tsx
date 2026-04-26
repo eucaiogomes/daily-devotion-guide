@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AppHeader } from "@/components/AppHeader";
-import { ArrowLeft, Volume2, Check, Sparkles, HandHeart, Heart } from "lucide-react";
+import { ArrowLeft, Volume2, Check, Sparkles, HandHeart, Heart, Mic } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PronunciationRecorder } from "@/components/PronunciationRecorder";
 import { useSpeech } from "@/hooks/useSpeech";
+import { useSpeechRecognition } from "@/hooks/useSpeechRecognition";
 import { getPsalmByDay, type PsalmLesson } from "@/data/psalms";
 
 export const Route = createFileRoute("/lesson/$day")({
