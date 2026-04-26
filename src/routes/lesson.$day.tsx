@@ -328,6 +328,15 @@ function PrayerStep({ step, onComplete }: { step: Extract<Step, { kind: "prayer"
         <span className="text-[10px] font-semibold text-muted-foreground tabular-nums">
           {Math.min(revealed, total)}/{total}
         </span>
+        {!allDone && (
+          <button
+            onClick={onComplete}
+            className="ml-1 text-[10px] font-semibold text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+            aria-label="Pular oração e ir direto ao Salmo"
+          >
+            pular
+          </button>
+        )}
       </div>
 
       {/* Conversa */}
@@ -1004,6 +1013,13 @@ function SpeakExercise({ step, feedback, setFeedback }: { step: Extract<Step, { 
           onResult={(r) => setFeedback(r.passed ? "right" : "wrong")}
         />
       </div>
+
+      <button
+        onClick={() => setFeedback("right")}
+        className="mt-5 text-xs font-semibold text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+      >
+        pular este exercício de voz
+      </button>
     </div>
   );
 }
