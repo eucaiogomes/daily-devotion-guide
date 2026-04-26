@@ -1004,6 +1004,13 @@ function SpeakExercise({ step, feedback, setFeedback }: { step: Extract<Step, { 
           onResult={(r) => setFeedback(r.passed ? "right" : "wrong")}
         />
       </div>
+
+      <button
+        onClick={() => setFeedback("right")}
+        className="mt-5 text-xs font-semibold text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
+      >
+        pular este exercício de voz
+      </button>
     </div>
   );
 }
