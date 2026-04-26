@@ -9,38 +9,168 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TreinosRouteImport } from './routes/treinos'
+import { Route as RushRouteImport } from './routes/rush'
+import { Route as ForcaRouteImport } from './routes/forca'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as AnkiRouteImport } from './routes/anki'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LessonDayRouteImport } from './routes/lesson.$day'
+import { Route as DevotionalIdRouteImport } from './routes/devotional.$id'
 
+const TreinosRoute = TreinosRouteImport.update({
+  id: '/treinos',
+  path: '/treinos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RushRoute = RushRouteImport.update({
+  id: '/rush',
+  path: '/rush',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForcaRoute = ForcaRouteImport.update({
+  id: '/forca',
+  path: '/forca',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnkiRoute = AnkiRouteImport.update({
+  id: '/anki',
+  path: '/anki',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LessonDayRoute = LessonDayRouteImport.update({
+  id: '/lesson/$day',
+  path: '/lesson/$day',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevotionalIdRoute = DevotionalIdRouteImport.update({
+  id: '/devotional/$id',
+  path: '/devotional/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/anki': typeof AnkiRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/forca': typeof ForcaRoute
+  '/rush': typeof RushRoute
+  '/treinos': typeof TreinosRoute
+  '/devotional/$id': typeof DevotionalIdRoute
+  '/lesson/$day': typeof LessonDayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/anki': typeof AnkiRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/forca': typeof ForcaRoute
+  '/rush': typeof RushRoute
+  '/treinos': typeof TreinosRoute
+  '/devotional/$id': typeof DevotionalIdRoute
+  '/lesson/$day': typeof LessonDayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/anki': typeof AnkiRoute
+  '/configuracoes': typeof ConfiguracoesRoute
+  '/forca': typeof ForcaRoute
+  '/rush': typeof RushRoute
+  '/treinos': typeof TreinosRoute
+  '/devotional/$id': typeof DevotionalIdRoute
+  '/lesson/$day': typeof LessonDayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/anki'
+    | '/configuracoes'
+    | '/forca'
+    | '/rush'
+    | '/treinos'
+    | '/devotional/$id'
+    | '/lesson/$day'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/anki'
+    | '/configuracoes'
+    | '/forca'
+    | '/rush'
+    | '/treinos'
+    | '/devotional/$id'
+    | '/lesson/$day'
+  id:
+    | '__root__'
+    | '/'
+    | '/anki'
+    | '/configuracoes'
+    | '/forca'
+    | '/rush'
+    | '/treinos'
+    | '/devotional/$id'
+    | '/lesson/$day'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AnkiRoute: typeof AnkiRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  ForcaRoute: typeof ForcaRoute
+  RushRoute: typeof RushRoute
+  TreinosRoute: typeof TreinosRoute
+  DevotionalIdRoute: typeof DevotionalIdRoute
+  LessonDayRoute: typeof LessonDayRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/treinos': {
+      id: '/treinos'
+      path: '/treinos'
+      fullPath: '/treinos'
+      preLoaderRoute: typeof TreinosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rush': {
+      id: '/rush'
+      path: '/rush'
+      fullPath: '/rush'
+      preLoaderRoute: typeof RushRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forca': {
+      id: '/forca'
+      path: '/forca'
+      fullPath: '/forca'
+      preLoaderRoute: typeof ForcaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/anki': {
+      id: '/anki'
+      path: '/anki'
+      fullPath: '/anki'
+      preLoaderRoute: typeof AnkiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +178,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/lesson/$day': {
+      id: '/lesson/$day'
+      path: '/lesson/$day'
+      fullPath: '/lesson/$day'
+      preLoaderRoute: typeof LessonDayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/devotional/$id': {
+      id: '/devotional/$id'
+      path: '/devotional/$id'
+      fullPath: '/devotional/$id'
+      preLoaderRoute: typeof DevotionalIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AnkiRoute: AnkiRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
+  ForcaRoute: ForcaRoute,
+  RushRoute: RushRoute,
+  TreinosRoute: TreinosRoute,
+  DevotionalIdRoute: DevotionalIdRoute,
+  LessonDayRoute: LessonDayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
